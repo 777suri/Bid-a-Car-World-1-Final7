@@ -95,6 +95,7 @@ function PlotManager:CollectIncome(playerId, conveyorId)
         if conveyor.id == conveyorId then
             local accumulated = IncomeGenerator:CalculateAccumulatedIncome(conveyor)
             PlayerDataManager:UpdateMoney(playerId, accumulated)
+            PlayerDataManager:UpdateStats(playerId, "totalIncomeCollected", accumulated)
             conveyor.income_accumulated = 0
             conveyor.lastCollected = os.time()
             return accumulated
@@ -115,17 +116,46 @@ end
 
 --[[
     Unlock a new conveyor (via rebirth)
+    Increments totalConveyors up to MAX_CONVEYORS (6)
     @param playerId: string - Player ID
+    @return: boolean - Success
 ]]
 function PlotManager:UnlockConveyor(playerId)
+    local Config = require(script.Parent.Parent:WaitForChild("Config"))
     local PlayerDataManager = require(script.Parent:WaitForChild("PlayerDataManager"))
     local player = PlayerDataManager:GetPlayer(playerId)
     
-    if player.plot.unlockedCount < player.plot.totalConveyors then
+    local MAX_CONVEYORS = Config.MAX_CONVEYORS or 6
+    
+    if player.plot.totalConveyors < MAX_CONVEYORS then
+        player.plot.totalConveyors = player.plot.totalConveyors + 1
         player.plot.unlockedCount = player.plot.unlockedCount + 1
+        
+        -- Add new empty conveyor to the list
+        table.insert(player.plot.conveyors, {
+            id = "conveyor_" .. player.plot.totalConveyors,
+            car = nil,
+            npc = nil,
+            income_accumulated = 0,
+            lastCollected = 0
+        })
+        
         return true
     end
     return false
+end
+
+--[[
+    Check if conveyor slot is unlocked
+    @param playerId: string - Player ID
+    @param conveyorIndex: number - Index of conveyor (1-6)
+    @return: boolean - Unlocked status
+]]
+function PlotManager:IsConveyorUnlocked(playerId, conveyorIndex)
+    local PlayerDataManager = require(script.Parent:WaitForChild("PlayerDataManager"))
+    local player = PlayerDataManager:GetPlayer(playerId)
+    
+    return conveyorIndex <= player.plot.unlockedCount
 end
 
 return PlotManager
