@@ -32,11 +32,11 @@ local TIER_SPECS = {
         decoRange = { min = 21, max = 50 },
         lockerChance = 1/1
     },
-    TIER5 = {
+    TIER_5 = {
         entryFee = 5000,
         carRarities = { epic = 1/24, legendary = 1/8, spec = 0.25 },
         decoRange = { min = 50, max = 80 },
-        lockerChance = 2
+        lockerChance = 2  -- Always 2 lockers for TIER_5
     }
 }
 
@@ -55,7 +55,8 @@ function RNGGarageGenerator:GenerateGarage(tierType)
         tier = tierType,
         car = self:GenerateCar(spec.carRarities),
         decorations = self:GenerateDecorations(spec.decoRange),
-        locker = self:GenerateLocker(spec.lockerChance)
+        lockers = self:GenerateLockers(spec.lockerChance),
+        entryFee = spec.entryFee
     }
 end
 
@@ -124,26 +125,46 @@ function RNGGarageGenerator:GenerateDecorations(decoRange)
 end
 
 --[[
-    Generate locker (if dropped)
-    @param lockerChance: number - Chance to get locker
-    @return: table - Locker data or nil
+    Generate locker(s) based on tier
+    TIER_5 always generates 2 lockers, others generate 0-1
+    @param lockerChance: number - Chance to get locker (or count for TIER_5)
+    @return: table - Array of locker data (can be empty)
 ]]
-function RNGGarageGenerator:GenerateLocker(lockerChance)
-    local roll = math.random()
+function RNGGarageGenerator:GenerateLockers(lockerChance)
+    local lockers = {}
+    local lockerCount = 0
     
-    if roll <= lockerChance then
+    -- For TIER_5, always generate 2 lockers
+    if lockerChance == 2 then
+        lockerCount = 2
+    elseif lockerChance == 1 then
+        -- CHOSEN tier: always 1 locker
+        lockerCount = 1
+    else
+        -- Other tiers: check probability
+        local roll = math.random()
+        if roll <= lockerChance then
+            lockerCount = 1
+        else
+            return lockers  -- Empty array (no locker)
+        end
+    end
+    
+    -- Generate lockers
+    for i = 1, lockerCount do
         local rarities = { "silver", "gold", "black" }
         local rarity = rarities[math.random(1, 3)]
         
-        return {
-            id = "locker_" .. rarity .. "_" .. os.time(),
+        table.insert(lockers, {
+            id = "locker_" .. rarity .. "_" .. os.time() .. "_" .. i,
             rarity = rarity,
             unopened = true,
+            acquiredAt = os.time(),
             contents = self:PopulateLockerContents(rarity)
-        }
+        })
     end
     
-    return nil
+    return lockers
 end
 
 --[[
