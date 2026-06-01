@@ -49,6 +49,16 @@ function InventoryManager:ListItems(playerId)
 end
 
 --[[
+    Get dice list from inventory
+    @param playerId: string - Player ID
+    @return: table - Dice list
+]]
+function InventoryManager:GetDiceList(playerId)
+    local PlayerDataManager = require(script.Parent:WaitForChild("PlayerDataManager"))
+    return PlayerDataManager:GetInventory(playerId, "dice")
+end
+
+--[[
     Get owned cars
     @param playerId: string - Player ID
     @param ownedOnly: boolean - Only owned cars
@@ -72,16 +82,31 @@ function InventoryManager:GetCars(playerId, ownedOnly)
 end
 
 --[[
-    Open a locker
+    Open a locker (with time-lock checking)
     @param playerId: string - Player ID
     @param lockerId: string - Locker ID
-    @return: table - Locker contents
+    @return: table - Locker contents or nil if not ready
 ]]
 function InventoryManager:OpenLocker(playerId, lockerId)
+    local ItemDatabase = require(script.Parent:WaitForChild("ItemDatabase"))
     local inventory = self:GetInventory(playerId)
     
     for i, locker in ipairs(inventory.lockers) do
         if locker.id == lockerId and locker.unopened then
+            -- Check if locker is ready to open
+            local lockerSpec = ItemDatabase.LOCKER_CONTENTS[locker.rarity]
+            if not lockerSpec then
+                return nil
+            end
+            
+            local timeRequired = lockerSpec.openTime
+            local timePassed = os.time() - (locker.acquiredAt or os.time())
+            
+            -- If not enough time has passed, don't open
+            if timePassed < timeRequired then
+                return nil  -- Locker not ready yet
+            end
+            
             locker.unopened = false
             locker.openedAt = os.time()
             
@@ -103,6 +128,60 @@ function InventoryManager:OpenLocker(playerId, lockerId)
     end
     
     return nil
+end
+
+--[[
+    Check if a locker is ready to open
+    @param playerId: string - Player ID
+    @param lockerId: string - Locker ID
+    @return: boolean - Ready status
+]]
+function InventoryManager:IsLockerReady(playerId, lockerId)
+    local ItemDatabase = require(script.Parent:WaitForChild("ItemDatabase"))
+    local inventory = self:GetInventory(playerId)
+    
+    for _, locker in ipairs(inventory.lockers) do
+        if locker.id == lockerId and locker.unopened then
+            local lockerSpec = ItemDatabase.LOCKER_CONTENTS[locker.rarity]
+            if not lockerSpec then
+                return false
+            end
+            
+            local timeRequired = lockerSpec.openTime
+            local timePassed = os.time() - (locker.acquiredAt or os.time())
+            
+            return timePassed >= timeRequired
+        end
+    end
+    
+    return false
+end
+
+--[[
+    Get time remaining for locker to open
+    @param playerId: string - Player ID
+    @param lockerId: string - Locker ID
+    @return: number - Seconds remaining (0 if ready or not found)
+]]
+function InventoryManager:GetLockerTimeRemaining(playerId, lockerId)
+    local ItemDatabase = require(script.Parent:WaitForChild("ItemDatabase"))
+    local inventory = self:GetInventory(playerId)
+    
+    for _, locker in ipairs(inventory.lockers) do
+        if locker.id == lockerId and locker.unopened then
+            local lockerSpec = ItemDatabase.LOCKER_CONTENTS[locker.rarity]
+            if not lockerSpec then
+                return 0
+            end
+            
+            local timeRequired = lockerSpec.openTime
+            local timePassed = os.time() - (locker.acquiredAt or os.time())
+            
+            return math.max(0, timeRequired - timePassed)
+        end
+    end
+    
+    return 0
 end
 
 --[[
