@@ -37,7 +37,7 @@ function ShopManager:BuyDice(playerId, diceType)
     PlayerDataManager:UpdateStats(playerId, "totalMoneySpent", dice.price)
     
     local diceItem = {
-        id = "dice_" .. os.time(),
+        id = "dice_" .. os.time() .. "_" .. math.random(1, 9999),
         type = "dice",
         diceType = diceType,
         unopened = true,
@@ -68,7 +68,7 @@ function ShopManager:OpenDice(playerId, diceId)
         end
     end
     
-    if not dice then
+    if not dice or not dice.unopened then
         return nil
     end
     
@@ -107,6 +107,18 @@ function ShopManager:CanAffordDice(playerId, diceType)
     end
     
     return false
+end
+
+--[[
+    Check if player can purchase NA-SPEC dice (requires Rebirth 1+)
+    @param playerId: string - Player ID
+    @return: boolean - Can purchase
+]]
+function ShopManager:CanBuyNASpec(playerId)
+    local PlayerDataManager = require(script.Parent:WaitForChild("PlayerDataManager"))
+    local player = PlayerDataManager:GetPlayer(playerId)
+    
+    return player.rebirths.count >= 1
 end
 
 return ShopManager
