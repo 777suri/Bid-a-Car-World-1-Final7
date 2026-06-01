@@ -108,4 +108,13 @@ function RebirthManager:GetNextRebirthCost(playerId)
     return REBIRTH_COSTS[nextLevel] or nil
 end
 
+--[[
+    Get rebirth unlocks for a specific level
+    @param level: number - Rebirth level
+    @return: table - Unlocks for that level
+]]
+function RebirthManager:GetRebirthUnlocks(level)
+    return REBIRTH_UNLOCKS[level] or {}
+end
+
 return RebirthManager
