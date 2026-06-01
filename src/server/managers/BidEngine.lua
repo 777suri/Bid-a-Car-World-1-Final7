@@ -30,14 +30,15 @@ function BidEngine:StartBid(playerId, tierType, entryFee)
         garage = garage,
         bots = bots,
         state = "WAITING",
-        currentBid = 0,
+        currentBid = entryFee,  -- Starting bid = entry fee
         biddingHistory = {
-            { player = playerId, amount = 0, time = os.time() }
+            { player = "SYSTEM", amount = entryFee, time = os.time(), reason = "Starting bid" }
         },
         playerBids = { [playerId] = 0 },
         botBids = {},
         startTime = os.time(),
-        bidCountdown = 2
+        bidCountdown = 2,
+        selectedDecorations = {}  -- For winner to select decorations
     }
     
     -- Initialize bot bids
@@ -150,8 +151,9 @@ function BidEngine:SettleWin(bidId, playerId)
     local rewards = {
         car = bid.garage.car,
         decorations = bid.garage.decorations,
-        locker = bid.garage.locker,
-        bidAmount = bid.currentBid
+        lockers = bid.garage.lockers,  -- Now an array of lockers
+        bidAmount = bid.currentBid,
+        selectedDecorations = bid.selectedDecorations
     }
     
     bid.state = "COMPLETED"
@@ -174,6 +176,53 @@ function BidEngine:SettleLoss(bidId, playerId)
     
     bid.state = "COMPLETED"
     activeBids[bidId] = nil
+    
+    return true
+end
+
+--[[
+    Allow winner to select 0-2 decorations from garage
+    @param bidId: string - Bid session ID
+    @param playerId: string - Player ID
+    @param decorationIds: table - Array of decoration IDs to select (max 2)
+    @return: boolean - Success status
+]]
+function BidEngine:SelectDecorations(bidId, playerId, decorationIds)
+    local bid = activeBids[bidId]
+    if not bid then
+        return false
+    end
+    
+    -- Only the player who won can select
+    if bid.playerId ~= playerId then
+        return false
+    end
+    
+    -- Can only select 0-2 decorations
+    if decorationIds and #decorationIds > 2 then
+        return false
+    end
+    
+    -- Validate that selected decorations exist in garage
+    if decorationIds then
+        local validDecos = {}
+        for _, selectedId in ipairs(decorationIds) do
+            local found = false
+            for _, deco in ipairs(bid.garage.decorations) do
+                if deco.id == selectedId then
+                    found = true
+                    table.insert(validDecos, deco)
+                    break
+                end
+            end
+            if not found then
+                return false  -- Selected deco doesn't exist in garage
+            end
+        end
+        bid.selectedDecorations = validDecos
+    else
+        bid.selectedDecorations = {}
+    end
     
     return true
 end
