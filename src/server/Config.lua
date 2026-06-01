@@ -50,7 +50,7 @@ Config.TIER_SPECS = {
     ADVANCED = { cost = 500, minDeco = 7, maxDeco = 13 },
     EXPERT = { cost = 1200, minDeco = 13, maxDeco = 21 },
     CHOSEN = { cost = 2500, minDeco = 21, maxDeco = 50 },
-    TIER5 = { cost = 5000, minDeco = 50, maxDeco = 80 }
+    TIER_5 = { cost = 5000, minDeco = 50, maxDeco = 80 }
 }
 
 return Config
